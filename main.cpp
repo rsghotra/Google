@@ -714,29 +714,30 @@ int ScheduleTasks(vector<char>& tasks, int k) {
   for(auto& task: tasks) {
     frequencies[task]++;
   }
+
   priority_queue<pair<char, int>, vector<pair<char, int>>, CharFrequencyCompare> maxHeap;
-  for(auto entry: frequencies) {
+
+  for(auto& entry: frequencies) {
     maxHeap.push(entry);
   }
-
   while(!maxHeap.empty()) {
-    //in each iteration: clear these tasks; like level BFS hai ye
-    queue<pair<char, int>> queue;
-    for(int i = k+1; i > 0 && !maxHeap.empty(); i--) {
+    queue<pair<char, int>> waitList;
+    int n = k + 1;
+    for(; n > 0 && maxHeap.empty() == false; n--) {
       intervalCount++;
-      auto currentEntry = maxHeap.top();
+      auto entry = maxHeap.top();
       maxHeap.pop();
-      if(currentEntry.second > 1) {
-        currentEntry.second--;
-        queue.push(currentEntry);
+      if(entry.second > 1) {
+        entry.second--;
+        waitList.push(entry);
       }
     }
-    while(!queue.empty()) {
-      maxHeap.push(queue.front());
-      queue.pop();
+    while(!waitList.empty()) {
+      maxHeap.push(waitList.front());
+      waitList.pop();
     }
     if(maxHeap.empty() == false) {
-      intervalCount += k+1;
+      intervalCount += n;
     }
   }
   return intervalCount;
@@ -752,12 +753,288 @@ void ScheduleTasks() {
        << ScheduleTasks(tasks, 3) << endl;
 }
 
+
+class Element {
+public:
+  int sequenceNumber;
+  int num;
+  int frequency;
+
+  Element(int seq, int num, int freq) {
+    this->sequenceNumber = seq;
+    this->num = num;
+    this->frequency = freq;
+  }
+};
+
+struct CustomComparator {
+  bool operator()(const Element& e1, const Element& e2) {
+    if(e1.frequency == e2.frequency) {
+      return e1.sequenceNumber < e2.sequenceNumber;
+    } else {
+      return e1.frequency < e2.frequency;
+    }
+  }
+};
+
+class FrequencyStack {
+private:
+  int sequenceNumber = 0;
+  unordered_map<int, int> frequencies;
+  priority_queue<Element, vector<Element>, CustomComparator> maxHeap;
+public:
+  virtual void push(int num) {
+    frequencies[num]++;
+    maxHeap.push({sequenceNumber++, num, frequencies[num]});
+  }
+  virtual int pop() {
+    int num = maxHeap.top().num;
+    maxHeap.pop();
+    if(frequencies[num] > 1) {
+      frequencies[num]--;
+    } else {
+      frequencies.erase(num);
+    }
+    return num;
+  }
+};
+
+void FreqStack() {
+  FrequencyStack frequencyStack;
+  frequencyStack.push(1);
+  frequencyStack.push(2);
+  frequencyStack.push(3);
+  frequencyStack.push(2);
+  frequencyStack.push(1);
+  frequencyStack.push(2);
+  frequencyStack.push(5);
+  cout << frequencyStack.pop() << endl;
+  cout << frequencyStack.pop() << endl;
+  cout << frequencyStack.pop() << endl;
+}
+
+struct ListNode {
+  int data;
+  ListNode* next;
+  ListNode(int d) {
+    this->data = d;
+    this->next = 0;
+  }
+};
+
+struct ListCompare {
+  bool operator()(const ListNode* x, ListNode* y) {
+    return x->data > y->data;
+  };
+};
+
+ListNode* MergeKSortedLists(const vector<ListNode*>& lists) {
+  priority_queue<ListNode*, vector<ListNode*>, ListCompare> minHeap;
+  for(auto head: lists) {
+    if(head != 0) {
+      minHeap.push(head);
+    }
+  }
+  ListNode* newHead = 0;
+  ListNode* tail = 0;
+
+  while(!minHeap.empty()) {
+    auto entry = minHeap.top();
+    minHeap.pop();
+    if(!newHead) {
+      newHead = tail = entry;
+    } else {
+      tail->next = entry;
+      tail = entry;
+    }
+    //push the next entry to the heap
+    if(entry->next) {
+      minHeap.push(entry->next);
+    }
+  }
+  return newHead;
+}
+
+
+void MergeKSortedLists() {
+  ListNode *l1 = new ListNode(2);
+  l1->next = new ListNode(6);
+  l1->next->next = new ListNode(8);
+
+  ListNode *l2 = new ListNode(3);
+  l2->next = new ListNode(6);
+  l2->next->next = new ListNode(7);
+
+  ListNode *l3 = new ListNode(1);
+  l3->next = new ListNode(3);
+  l3->next->next = new ListNode(4);
+
+  ListNode *result = MergeKSortedLists(vector<ListNode *>{l1, l2, l3});
+  cout << "Here are the elements form the merged list: ";
+  while (result != nullptr) {
+    cout << result->data << " ";
+    result = result->next;
+  }
+  cout << endl;
+}
+
+struct KValCompare {
+  bool operator()(const pair<int, pair<int, int>>& x, const pair<int, pair<int, int>>& y) {
+    return x.first > y.first;
+  }
+};
+
+vector<int> MergeKSortedArrays(const vector<vector<int>>& lists) {
+  vector<int> result;
+  priority_queue<pair<int, pair<int, int>>, vector<pair<int, pair<int, int>>>, KValCompare> minHeap;
+  for(int i = 0; i < lists.size(); i++) {
+    if(lists[i].empty() == false) {
+      minHeap.push(make_pair(lists[i][0], make_pair(i, 0)));
+    }
+  }
+
+  while(minHeap.empty()==false) {
+    auto entry = minHeap.top();
+    minHeap.pop();
+    result.push_back(entry.first);
+    entry.second.second++;
+    if(lists[entry.second.first].size() > entry.second.second) {
+      entry.first = lists[entry.second.first][entry.second.second];
+      minHeap.push(entry);
+    }
+  }
+  return result;
+}
+
+void MergeKSortedArrays() {
+  vector<vector<int>> nums = {{2,6,8}, {3,6,7}, {1,3,4}};
+  vector<int> result = MergeKSortedArrays(nums);
+  cout << "K Merged arrays: " << endl;
+  for(int num: result) {
+    cout << num << " ";
+  }
+  cout << endl;
+}
+
+/*
+Let there be N element in M sorted arrays;
+Kth Smallest Element
+Time: O(KLogM)
+Space:O(M)
+*/
+
+int KthSmallestInMSortedArrays(const vector<vector<int>>& lists, int k) {
+    priority_queue<pair<int, pair<int, int>>, vector<pair<int, pair<int, int>>>, KValCompare> minHeap;
+    for(int i = 0; i < lists.size(); i++) {
+      if(lists[i].empty() == false) {
+        minHeap.push(make_pair(lists[i][0], make_pair(i, 0)));
+      }
+    }
+
+    int count  = 0, result = 0;
+
+    while(!minHeap.empty()) {
+      auto entry = minHeap.top();
+      minHeap.pop();
+      result = entry.first;
+      count++;
+      if(k == count) {
+        break;
+      }
+      entry.second.second++;
+      if(lists[entry.second.first].size() > entry.second.second) {
+        entry.first = lists[entry.second.first][entry.second.second];
+        minHeap.push(entry);
+      }
+    }
+    return result;
+}
+
+void KthSmallestInMSortedArrays() {
+  vector<vector<int>> lists = {{2, 6, 8}, {3, 6, 7}, {1, 3, 4}};
+  int result = KthSmallestInMSortedArrays(lists, 5);
+  cout << "Kth smallest number is: " << result;
+}
+
+pair<int, int> SmallestRange(const vector<vector<int>>& lists) {
+  int rangeStart = 0;
+  int rangeEnd = INT32_MAX;
+  int currentMax = INT32_MIN;
+  priority_queue<pair<int, pair<int, int>>, vector<pair<int, pair<int, int>>>, KValCompare> minHeap;
+  //note currentMax is analysed only when you are inserting elements into heap
+  for(int i = 0; i < lists.size(); i++) {
+    if(lists[i].empty() == false) {
+      minHeap.push(make_pair(lists[i][0], make_pair(i, 0)));
+      currentMax = max(lists[i][0], currentMax);
+    }
+  }
+
+  while(minHeap.size() == lists.size()) {
+    auto entry = minHeap.top();
+    minHeap.pop();
+    if((rangeEnd - rangeStart) > (currentMax - entry.first)) {
+      rangeStart = entry.first;
+      rangeEnd = currentMax;
+    }
+    entry.second.second++;
+    if(lists[entry.second.first].size() > entry.second.second) {
+      entry.first = lists[entry.second.first][entry.second.second];
+      currentMax = max(currentMax, lists[entry.second.first][entry.second.second]);
+      minHeap.push(entry);
+    }
+  }
+  return make_pair(rangeStart, rangeEnd);
+}
+
+void SmallestRange() {
+  vector<vector<int>> lists = {{1, 5, 8}, {4, 12}, {7, 8, 10}};
+  auto result = SmallestRange(lists);
+  cout << "\nSmallest range is: [" << result.first << ", " << result.second << "]";
+}
+
+struct PairCompare {
+  bool operator()(const pair<int, int>& x, const pair<int, int>& y) {
+    return x.first + x.second > y.first + y.second;
+  }
+};
+
+vector<pair<int, int>> KLargestSumPairs(const vector<int>& nums1, const vector<int>& nums2, int k) {
+  priority_queue<pair<int, int>, vector<pair<int, int>>, PairCompare> minHeap;
+  vector<pair<int, int>> result;
+  for(int i = 0; i < nums1.size() && i < k; i++) {
+    for(int j = 0; j < nums2.size() && j < k; j++) {
+      if(minHeap.empty() || minHeap.size() < k) {
+        minHeap.push(make_pair(nums1[i], nums2[j]));
+      } else if((nums1[i]+nums2[j]) > (minHeap.top().first + minHeap.top().second)) {
+        minHeap.pop();
+        minHeap.push(make_pair(nums1[i], nums2[j]));
+      } else if((nums1[i]+nums2[j]) < (minHeap.top().first + minHeap.top().second)) {
+        break;
+      }
+    }
+  }
+  while(!minHeap.empty()) {
+    result.push_back(minHeap.top());
+    minHeap.pop();
+  }
+  return result;
+}
+
+void KLargestSumPairs() {
+  auto result = KLargestSumPairs({9, 8, 2}, {6, 3, 1}, 3);
+  cout << "\nPairs with largest sum are: ";
+  for (pair<int,int> pr : result) {
+    cout << "[" << pr.first << ", " << pr.second << "] ";
+  }
+}
+
 int main() {
-  //educative
+  //educative - Two Heaps
   StreamMedian();
   MaximizeCapital();
   Slm();
   FindNextInterval();
+  //educative - top K
   FindKLargest();
   FindKthSmallest();
   ClosestDistanceFromOrigin();
@@ -771,6 +1048,13 @@ int main() {
   ReArrangeString();
   ReArrangeStringKDistanceApart();
   ScheduleTasks();
+  FreqStack();
+  //educative - K-Way Merge
+  MergeKSortedLists();
+  MergeKSortedArrays();
+  KthSmallestInMSortedArrays();
+  SmallestRange();
+  KLargestSumPairs();
   //algo expert
 
   //structy
